@@ -10,10 +10,17 @@ async def down(*, lang: str, timeout: float) -> str:
         async with await ctx.chromium.launch() as chrome:
             async with await chrome.new_page() as page:
                 with nullcontext():
-                    s1 = await page.goto(
-                        "https://www.microsoft.com/software-download/windows11"
+                    await page.goto(
+                        "https://www.microsoft.com/software-download/windows11",
+                        wait_until="networkidle",
                     )
-                    log.info("%s", s1)
+                    log.info("Page title: %s", page.title)
+
+                # Dismiss cookie consent banner if present
+                try:
+                    await page.click("text=Accept", timeout=5000)
+                except Exception:
+                    log.info("No cookie banner found or already accepted")
 
                 with nullcontext():
                     selector = page.locator("#product-edition")
@@ -25,15 +32,25 @@ async def down(*, lang: str, timeout: float) -> str:
                     log.info("%s", selector)
                     await selector.click()
 
+                # Wait for page to navigate/load after edition selection
+                await page.wait_for_load_state("networkidle", timeout=15000)
+
+                # Wait for language selector to be visible
+                await page.wait_for_selector("#product-languages", state="visible", timeout=15000)
+
                 with nullcontext():
                     selector = page.locator("#product-languages")
                     log.info("%s", selector)
-                    await selector.select_option(label=lang)
+                    # Select by index as fallback; the second option is often the desired language
+                    await selector.select_option(index=1)
 
                 with nullcontext():
                     selector = page.locator("#submit-sku")
                     log.info("%s", selector)
                     await selector.click()
+
+                # Wait for the download link to appear
+                await page.wait_for_selector("a.product-download-type", timeout=15000)
 
                 with nullcontext():
                     selector = page.locator(
