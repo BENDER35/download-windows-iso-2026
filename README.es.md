@@ -56,8 +56,14 @@ https://docs.docker.com/engine/install/
 ### Paso 1
 
 ```
-# Predeterminado a `Inglés Internacional`
-./download.sh [-l IDIOMA]
+# Predeterminado a `Windows 11, Inglés Internacional`
+./download.sh [-l IDIOMA] [-w VERSION_WINDOWS]
+
+# Descargar Windows 10, Inglés Internacional
+./download.sh -l "Inglés Internacional" -w 10
+
+# Descargar Windows 11, Español
+./download.sh -l "Español" -w 11
 ```
 
 ### Paso 2
@@ -69,7 +75,21 @@ Verifique `./tmp/` para la ISO descargada.
 El script realizará las siguientes acciones:
 
 1. Construirá una imagen Docker con Playwright instalado
-2. Ejecutará un navegador para navegar a la página de descarga de Windows 11 de Microsoft
-3. Seleccionará la edición del producto y el idioma
-4. Extraerá el vínculo de descarga directo
-5. Usará `wget` para descargar la ISO al directorio `tmp/`
+2. Ejecutará un navegador para navegar a la página de descarga de Windows {10/11} de Microsoft
+3. Mostrará advertencias de fin de soporte
+4. Seleccionará la edición del producto y el idioma
+5. Extraerá el vínculo de descarga directo
+6. Usará `wget` para descargar la ISO al directorio `tmp/`
+
+### Advertencias Importantes
+
+Al descargar Windows 10:
+
+- **Soporte principal finalizado**: 9 de enero de 2018
+- **ESU (Actualizaciones de Soporte Extendido) finaliza**: 10 de octubre de 2025
+- **Microsoft puede retirar las descargas de ISOS en cualquier momento** - el vínculo de descarga puede volverse sin aviso previo
+- Considere usar Windows 11 para recibir actualizaciones de seguridad continuadas y soporte
+
+### Paso 4
+
+Verifique el archivo descargado:

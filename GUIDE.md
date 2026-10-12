@@ -2,11 +2,11 @@
 
 ## Overview
 
-The `download-windows-iso` script automates the download of a Windows 11 ISO file from Microsoft's website. It uses a combination of Bash, Docker, and Playwright (a browser automation library) to:
+The `download-windows-iso` script automates the download of a Windows 10 or Windows 11 ISO file from Microsoft's website. It uses a combination of Bash, Docker, and Playwright (a browser automation library) to:
 
 1. Build a Docker image with Playwright installed.
-2. Launch a headless browser to visit the Microsoft Windows 11 download page.
-3. Select the desired product edition (e.g., Windows 11) and language.
+2. Launch a headless browser to visit the Microsoft Windows 10/11 download page.
+3. Select the desired product edition (e.g., Windows 10 or Windows 11) and language.
 4. Extract the direct download link for the ISO.
 5. Use `wget` to download the ISO to the local `tmp/` directory.
 
@@ -20,16 +20,16 @@ The script begins by building a Docker image named `download-windows-iso-2026-bi
 - Copies `requirements.txt` and installs Python dependencies (currently `playwright`).
 - Runs `playwright install` to download the Chromium browser executable.
 - Copies the local `scripts/` directory into the image.
-- Sets the entry point to run the Python module `srv` with the `--language` argument.
+- Sets the entry point to run the Python module `srv` with the `--language` and `--windows-version` arguments.
 
 ### Step 2: Run the Python Application
 
 The script runs `docker compose build` and `docker run` to start the container. The container executes a Python application (`scripts/play.py`) that:
 
 - Launches Chromium in headless mode.
-- Navigates to `https://www.microsoft.com/software-download/windows11`.
+- Navigates to `https://www.microsoft.com/software-download/windows{10/11}` (depends on the `-w` argument).
 - Dismisses any cookie consent banner if present.
-- Selects the product edition (index 1, typically "Windows 11").
+- Selects the product edition based on the Windows version selected.
 - Clicks the "Submit" button to proceed.
 - Waits for the language selector to become visible.
 - Selects the language specified via the `-l` or `--language` argument (default: "English International").
@@ -49,11 +49,14 @@ Once the direct download URL is obtained, the Bash script:
 ### Step 4: Usage
 
 ```bash
-# Default: English International
+# Default: Windows 11, English International
 ./download.sh
 
-# Specify a language
-./download.sh -l "English International"
+# Download Windows 10, English International
+./download.sh -l "English International" -w 10
+
+# Download Windows 11, Spanish
+./download.sh -l "Spanish" -w 11
 
 # Available languages depend on Microsoft's website; common values include:
 # - "English International"
@@ -62,12 +65,22 @@ Once the direct download URL is obtained, the Bash script:
 # - etc.
 ```
 
+### Important Warnings for Windows 10
+
+When downloading Windows 10:
+
+- **Mainstream support ended**: January 9, 2018
+- **ESU (Extended Support Updates) ends**: October 10, 2025
+- **Microsoft can withdraw ISO downloads at any time** - the download link may become unavailable without notice
+- Consider using Windows 11 for continued security updates and support
+
 ## Recent Fixes
 
 - Added `playwright install` to the Dockerfile to ensure the Chromium executable is available.
 - Added `wait_for_load_state("networkidle")` after page navigation to ensure resources are loaded.
 - Added cookie consent dismissal logic.
 - Added explicit waits for element visibility to improve reliability.
+- Added Windows 10/11 version selection support.
 
 ## Troubleshooting
 
@@ -75,4 +88,5 @@ If the script fails:
 
 - Ensure Docker is running and accessible.
 - Check that the language argument matches exactly what Microsoft displays (case-sensitive).
+- Verify the Windows version argument is either "10" or "11".
 - The script may fail if Microsoft changes their website layout; in such cases, the Playwright selectors may need updating.

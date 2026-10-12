@@ -56,8 +56,14 @@ https://docs.docker.com/engine/install/
 ### Step 1
 
 ```
-# Default to `English International`
-./download.sh [-l LANGUAGE]
+# Default to `Windows 11, English International`
+./download.sh [-l LANGUAGE] [-w WINDOWS_VERSION]
+
+# Download Windows 10, English International
+./download.sh -l "English International" -w 10
+
+# Download Windows 11, Spanish
+./download.sh -l "Español" -w 11
 ```
 
 ### Step 2
@@ -68,7 +74,21 @@ Check `./tmp/` for the downloaded ISO.
 
 The script will:
 1. Build a Docker image with Playwright installed
-2. Run a browser to navigate to the Microsoft Windows 11 download page
-3. Select the product edition and language
-4. Extract the direct download link
-5. Use `wget` to download the ISO to the `tmp/` directory
+2. Run a browser to navigate to the Microsoft Windows {10/11} download page
+3. Show support end-of-life warnings
+4. Select the product edition and language
+5. Extract the direct download link
+6. Use `wget` to download the ISO to the `tmp/` directory
+
+### Important Warnings
+
+When downloading Windows 10:
+
+- **Mainstream support ended**: January 9, 2018
+- **ESU (Extended Support Updates) ends**: October 10, 2025
+- **Microsoft can withdraw ISO downloads at any time** - the download link may become unavailable without notice
+- Consider using Windows 11 for continued security updates and support
+
+### Step 4
+
+Check the downloaded file:
