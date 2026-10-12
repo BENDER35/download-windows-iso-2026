@@ -78,18 +78,28 @@ El script realizará las siguientes acciones:
 2. Ejecutará un navegador para navegar a la página de descarga de Windows {10/11} de Microsoft
 3. Mostrará advertencias de fin de soporte
 4. Seleccionará la edición del producto y el idioma
-5. Extraerá el vínculo de descarga directo
-6. Usará `wget` para descargar la ISO al directorio `tmp/`
+5. Salida la página de URL de descarga directa
+6.Nota: El sitio web de Microsoft puede requerir completar la descarga manualmente
+   debido a medidas anti-bot. La URL de salida se puede usar con wget o un explorador.
 
 ### Advertencias Importantes
 
 Al descargar Windows 10:
 
-- **Soporte principal finalizado**: 9 de enero de 2018
-- **ESU (Actualizaciones de Soporte Extendido) finaliza**: 10 de octubre de 2025
+- **Soporte principal finalizado**: 14 de octubre de 2025
+- **ESU (Actualizaciones de Soporte Extendido) finaliza**: 12 de octubre de 2027
+  (Programa de pago de 3 años para recibir actualizaciones críticas e importantes de seguridad)
 - **Microsoft puede retirar las descargas de ISOS en cualquier momento** - el vínculo de descarga puede volverse sin aviso previo
 - Considere usar Windows 11 para recibir actualizaciones de seguridad continuadas y soporte
 
 ### Paso 4
 
-Verifique el archivo descargado:
+El script salida una URL de página de descarga. Puede usar esta URL con wget o un explorador:
+
+```bash
+# Usando wget (puede requerir opciones adicionales para el sitio de Microsoft):
+wget --content-disposition "URL_OUTPUT"
+
+# O simplemente abra la URL en un explorador y haga clic en el botón de descarga:
+# La URL se mostrará después de ejecutar el script
+```

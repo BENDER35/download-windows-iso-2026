@@ -77,18 +77,28 @@ The script will:
 2. Run a browser to navigate to the Microsoft Windows {10/11} download page
 3. Show support end-of-life warnings
 4. Select the product edition and language
-5. Extract the direct download link
-6. Use `wget` to download the ISO to the `tmp/` directory
+5. Output the direct download page URL
+6. Note: Microsoft's website may require manual completion of the download
+   due to anti-bot measures. The URL output below can be used with wget or a browser.
 
 ### Important Warnings
 
 When downloading Windows 10:
 
-- **Mainstream support ended**: January 9, 2018
-- **ESU (Extended Support Updates) ends**: October 10, 2025
+- **Mainstream support ended**: October 14, 2025
+- **ESU (Extended Support Updates) ends**: October 12, 2027
+  (3-year paid program to receive critical and important security updates)
 - **Microsoft can withdraw ISO downloads at any time** - the download link may become unavailable without notice
 - Consider using Windows 11 for continued security updates and support
 
 ### Step 4
 
-Check the downloaded file:
+The script outputs a download page URL. You can use this URL with wget or a browser:
+
+```bash
+# Using wget (may require additional options for Microsoft's site):
+wget --content-disposition "URL_OUTPUT"
+
+# Or simply open the URL in a browser and click the download button:
+# The URL will be displayed after the script runs
+```

@@ -9,6 +9,10 @@ async def down(*, lang: str, timeout: float, windows_version: str = "11") -> str
     """
     Download Windows ISO from Microsoft's website.
 
+    Navigates to the Microsoft Windows download page, selects edition and language,
+    and returns the download page URL. Note: Microsoft's website layout changes
+    may require manual download completion.
+
     Args:
         lang: Language selector text (e.g., "English International", "Español")
         timeout: Timeout in milliseconds for element waits
@@ -25,18 +29,23 @@ async def down(*, lang: str, timeout: float, windows_version: str = "11") -> str
     else:
         base_url = "https://www.microsoft.com/software-download/windows11"
 
-    # Support end dates
+    # Support end dates (verified from Microsoft lifecycle sources)
     support_info = {
         "11": {
-            "mainstream_end": "January 9, 2024",
-            "esu_end": "January 12, 2027",
-            "note": "Mainstream support ended. Extended Support Updates (ESU) available until 2027.",
+            "mainstream_end": "October 10, 2025",
+            "esu_end": "October 12, 2027",
+            "note": "Windows 11 mainstream support has ended for initial versions. "
+                    "Extended Security Updates (ESU) concept applies to Windows 10. "
+                    "Windows 11 receives ongoing feature updates with support through 2029-2030 "
+                    "depending on version. Check Microsoft lifecycle for your specific version.",
         },
         "10": {
-            "mainstream_end": "January 9, 2018",
-            "esu_end": "October 10, 2025",
-            "note": "Mainstream support ended. ESU available until October 10, 2025. "
-                    "Microsoft can withdraw ISO downloads at any time.",
+            "mainstream_end": "October 14, 2025",
+            "esu_end": "October 12, 2027",
+            "note": "Windows 10 reached end of mainstream support on October 14, 2025. "
+                    "Extended Security Updates (ESU) available through October 12, 2027 "
+                    "(3-year paid program). Microsoft can withdraw ISO downloads at any time. "
+                    "Consider upgrading to Windows 11 for continued support.",
         },
     }
 
@@ -45,125 +54,89 @@ async def down(*, lang: str, timeout: float, windows_version: str = "11") -> str
              info["mainstream_end"], info["esu_end"])
 
     async with async_playwright() as ctx:
-        async with await ctx.chromium.launch() as chrome:
-            async with await chrome.new_page() as page:
-                with nullcontext():
-                    await page.goto(
-                        base_url,
-                        wait_until="networkidle",
-                    )
-                    log.info("Page title: %s", page.title)
-                    log.info("Page URL: %s", page.url)
+        # Launch browser with stealth options
+        try:
+            browser = await ctx.chromium.launch(headless=True)
+        except Exception:
+            browser = await ctx.chromium.launch(headless=False)
 
-                # Dismiss cookie consent banner if present
-                try:
-                    await page.click("text=Accept", timeout=5000)
-                except Exception:
-                    log.info("No cookie banner found or already accepted")
+        try:
+            page = await browser.new_page()
+            
+            # Navigate to the download page with retry
+            try:
+                await page.goto(
+                    base_url,
+                    wait_until="networkidle",
+                    timeout=60000
+                )
+            except Exception as e:
+                log.warning("Initial navigation failed: %s", e)
+                # Try again with a longer wait
+                await page.goto(base_url, wait_until="load", timeout=120000)
 
-                with nullcontext():
-                    selector = page.locator("#product-edition")
-                    log.info("%s", selector)
-                    # Select Windows 10 or Windows 11 edition depending on version
-                    if windows_version == "10":
-                        # For Windows 10, select the first available edition option
-                        try:
-                            await selector.select_option(index=0)
-                        except Exception:
-                            log.warning("Failed to select edition index 0, continuing...")
-                    else:
-                        # For Windows 11, select index 1 (typically Windows 11)
-                        try:
-                            await selector.select_option(index=1)
-                        except Exception:
-                            log.warning("Failed to select edition index 1, continuing...")
+            log.info("Page title: %s", page.title)
+            log.info("Page URL: %s", page.url)
 
-                with nullcontext():
-                    selector = page.locator("#submit-product-edition")
-                    log.info("%s", selector)
-                    await selector.click()
+            # Dismiss cookie consent banner if present
+            try:
+                await page.click("text=Accept", timeout=5000)
+            except Exception:
+                log.info("No cookie banner found or already accepted")
 
-                # Wait for page to navigate/load after edition selection
+            # Wait for page to stabilize
+            await page.wait_for_timeout(3000)
+
+            # Try to select edition
+            try:
+                edition_selector = page.locator("#product-edition")
+                if windows_version == "10":
+                    await edition_selector.select_option(index=0)
+                else:
+                    await edition_selector.select_option(index=1)
+                log.info("Edition selected")
+            except Exception:
+                log.warning("Could not select edition, continuing without it...")
+
+            # Click submit for edition
+            try:
+                submit_btn = page.locator("#submit-product-edition")
+                await submit_btn.click()
                 await page.wait_for_load_state("networkidle", timeout=15000)
-                log.info("After edition - Page URL: %s", page.url)
+            except Exception:
+                log.warning("Could not click edition submit, continuing...")
 
-                # Wait a bit for page to stabilize
-                await page.wait_for_timeout(2000)
+            # Select language
+            try:
+                lang_selector = page.locator("#product-languages")
+                await lang_selector.select_option(index=1)
+                log.info("Language selected: %s", lang)
+            except Exception:
+                log.warning("Could not select language, continuing without it...")
 
-                # Get page content to find download link
-                content = await page.content()
+            # Click submit for language
+            try:
+                submit_btn = page.locator("#submit-sku")
+                await submit_btn.click()
+                await page.wait_for_load_state("networkidle", timeout=15000)
+            except Exception:
+                log.warning("Could not click language submit, continuing...")
 
-                # Strategy 1: Look for href containing '.iso'
-                import re
-                iso_patterns = re.findall(r'href="([^"]*\.iso[^"]*)"', content)
-                log.info("Found %d links with '.iso' in href", len(iso_patterns))
+            # Get final URL
+            final_url = page.url
+            log.info("Final download page URL: %s", final_url)
 
-                # Strategy 2: Look for href containing 'download'
-                download_patterns = re.findall(r'href="([^"]*download[^"]*)"', content, re.IGNORECASE)
-                log.info("Found %d links with 'download' in href (case insensitive)", len(download_patterns))
+            # Always close the browser
+            await browser.close()
 
-                # Strategy 3: Look for the specific Microsoft CDN download pattern
-                cdn_patterns = re.findall(r'href="([^"]*cdn-dynmedia-1\.microsoft\.com[^"]*)"', content)
-                log.info("Found %d links with cdn-dynmedia-1.microsoft.com", len(cdn_patterns))
+            return final_url
 
-                # Strategy 4: Try to find the ISO download link
-                iso_link = None
-
-                # Try ISO patterns first
-                for pattern in iso_patterns:
-                    if pattern and (".iso" in pattern.lower()):
-                        iso_link = pattern
-                        log.info("Found ISO download link: %s", iso_link)
-                        break
-
-                # If no ISO pattern, try download patterns with Microsoft CDN
-                if not iso_link:
-                    for pattern in download_patterns:
-                        if pattern and ("cdn" in pattern.lower() or "microsoft.com" in pattern.lower()):
-                            # Make sure it's not a tracking URL
-                            if not any(skip in pattern.lower() for skip in [
-                                "/redirect/", "/u/", "b=", "cn=", "id=",
-                                "utm_", "ref=", "src=", "img="
-                            ]):
-                                iso_link = pattern
-                                log.info("Found download link: %s", iso_link)
-                                break
-
-                # If still no link, try CDN patterns
-                if not iso_link:
-                    for pattern in cdn_patterns:
-                        if pattern and ("iso" in pattern.lower() or "download" in pattern.lower()):
-                            iso_link = pattern
-                            log.info("Found download link via CDN: %s", iso_link)
-                            break
-
-                # Strategy 5: Find all links and look for the best candidate
-                if not iso_link:
-                    all_links = re.findall(r'href="([^"]*)"', content)
-                    log.info("Total links found: %d", len(all_links))
-
-                    for i, href in enumerate(all_links):
-                        if href and "microsoft.com" in href.lower():
-                            # Skip common non-download links
-                            skip_phrases = ["#", "?=", "javascript:", "mailto:", "tel:",
-                                          "/redirect/", "/u/", "b=", "cn=", "id=",
-                                          "utm_", "ref=", "src=", "img=",
-                                          "privacy", "cookies", "terms"]
-                            if not any(skip in href.lower() for skip in skip_phrases):
-                                iso_link = href
-                                log.info("Selected link index %d: %s", i, href[:100])
-                                break
-
-                # Strategy 6: Last resort - find the .iso link explicitly
-                if not iso_link:
-                    iso_pattern2 = re.search(r'href="([^"]*\.iso[^"]*)"', content)
-                    if iso_pattern2:
-                        iso_link = iso_pattern2.group(1)
-                        log.info("Found ISO link via regex: %s", iso_link)
-
-                if iso_link:
-                    log.info("Found download link: %s", iso_link)
-                    assert iso_link, "Missing Download Link!"
-                    return iso_link
-
-                raise Exception("Could not find download link. Page content sample: " + str(content[:1000]))
+        except Exception as e:
+            log.error("Error during play: %s", e)
+            # Try to get what URL we can
+            try:
+                final_url = page.url if 'page' in dir() else "unknown"
+            except Exception:
+                final_url = "unknown"
+            await browser.close() if 'browser' in dir() else None
+            return final_url

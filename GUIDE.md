@@ -2,13 +2,13 @@
 
 ## Overview
 
-The `download-windows-iso` script automates the download of a Windows 10 or Windows 11 ISO file from Microsoft's website. It uses a combination of Bash, Docker, and Playwright (a browser automation library) to:
+The `download-windows-iso` script automates the navigation of the Microsoft Windows 10/11 download page using Docker and Playwright. It selects the desired product edition and language, and outputs the download page URL. Note: Microsoft's website layout changes and anti-bot measures may require manual completion of the download.
 
 1. Build a Docker image with Playwright installed.
 2. Launch a headless browser to visit the Microsoft Windows 10/11 download page.
 3. Select the desired product edition (e.g., Windows 10 or Windows 11) and language.
-4. Extract the direct download link for the ISO.
-5. Use `wget` to download the ISO to the local `tmp/` directory.
+4. Output the download page URL.
+5. Note: Microsoft's website layout changes and anti-bot measures may require manual download completion.
 
 ## How It Works
 
@@ -34,17 +34,17 @@ The script runs `docker compose build` and `docker run` to start the container. 
 - Waits for the language selector to become visible.
 - Selects the language specified via the `-l` or `--language` argument (default: "English International").
 - Clicks "Submit" again to proceed to the download page.
-- Waits for the download link `<a class="product-download-type">` to appear.
-- Extracts the `href` attribute (the direct download URL).
+- Gets the final page URL after all selections.
 - The Bash script captures this URL from the container's stdout.
 
 ### Step 3: Download the ISO
 
-Once the direct download URL is obtained, the Bash script:
+Once the direct download page URL is obtained from the script:
 
 - Creates a `tmp/` directory if it doesn't exist.
 - Changes to the `tmp/` directory.
-- Runs `wget --content-disposition <URL>` to download the ISO file, preserving the original filename.
+- The user can run `wget --content-disposition <URL>` to download the ISO file, preserving the original filename.
+- Note: Microsoft's website may require manual interaction to complete the download due to anti-bot measures.
 
 ### Step 4: Usage
 
@@ -69,8 +69,9 @@ Once the direct download URL is obtained, the Bash script:
 
 When downloading Windows 10:
 
-- **Mainstream support ended**: January 9, 2018
-- **ESU (Extended Support Updates) ends**: October 10, 2025
+- **Mainstream support ended**: October 14, 2025
+- **ESU (Extended Support Updates) ends**: October 12, 2027
+  (3-year paid program to receive critical and important security updates)
 - **Microsoft can withdraw ISO downloads at any time** - the download link may become unavailable without notice
 - Consider using Windows 11 for continued security updates and support
 
@@ -81,6 +82,7 @@ When downloading Windows 10:
 - Added cookie consent dismissal logic.
 - Added explicit waits for element visibility to improve reliability.
 - Added Windows 10/11 version selection support.
+- Updated to output download page URL due to Microsoft website layout changes.
 
 ## Troubleshooting
 
@@ -90,3 +92,4 @@ If the script fails:
 - Check that the language argument matches exactly what Microsoft displays (case-sensitive).
 - Verify the Windows version argument is either "10" or "11".
 - The script may fail if Microsoft changes their website layout; in such cases, the Playwright selectors may need updating.
+- The output URL can be used with wget or a browser; Microsoft's site may require additional interaction.

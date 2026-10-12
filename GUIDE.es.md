@@ -37,14 +37,16 @@ El script ejecuta `docker compose build` y `docker run` para iniciar el contened
 - Espera a que aparezca el vínculo de descarga `<a class="product-download-type">`.
 - Extrae el atributo `href` (la URL de descarga directa).
 - El script Bash captura esta URL desde la salida estándar del contenedor.
+- Nota: El sitio web de Microsoft puede requerir completar la descarga manualmente debido a medidas anti-bot.
 
 ### Paso 3: Descargar el ISO
 
-Una vez obtenida la URL de descarga directa, el script Bash:
+Una vez obtenida la URL de la página de descarga directa del script:
 
 - Crea el directorio `tmp/` si no existe.
 - Cambia al directorio `tmp/`.
-- Ejecuta `wget --content-disposition <URL>` para descargar el archivo ISO, preservando el nombre de archivo original.
+- El usuario puede ejecutar `wget --content-disposition <URL>` para descargar el archivo ISO, preservando el nombre de archivo original.
+- Nota: El sitio web de Microsoft puede requerir completar la descarga manualmente debido a medidas anti-bot.
 
 ### Paso 4: Uso
 
@@ -69,8 +71,9 @@ Una vez obtenida la URL de descarga directa, el script Bash:
 
 Al descargar Windows 10:
 
-- **Soporte principal finalizado**: 9 de enero de 2018
-- **ESU (Actualizaciones de Soporte Extendido) finaliza**: 10 de octubre de 2025
+- **Soporte principal finalizado**: 14 de octubre de 2025
+- **ESU (Actualizaciones de Soporte Extendido) finaliza**: 12 de octubre de 2027
+  (Programa de pago de 3 años para recibir actualizaciones críticas e importantes de seguridad)
 - **Microsoft puede retirar las descargas de ISOS en cualquier momento** - el vínculo de descarga puede volverse sin aviso previo
 - Considere usar Windows 11 para recibir actualizaciones de seguridad continuadas y soporte
 
