@@ -1,1 +1,11 @@
 /tmp/
+
+# secrets / credentials (never commit)
+.secrets
+.secrets.*
+.env
+.env.*
+
+# python bytecode
+__pycache__/
+*.py[cod]
