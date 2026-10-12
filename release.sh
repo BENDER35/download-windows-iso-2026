@@ -28,6 +28,12 @@ API="https://api.github.com/repos/${REPO}"
 DIRNAME="$(cd -- "$(dirname -- "$(realpath -- "$0")")" && pwd)"
 cd -- "$DIRNAME"
 
+# The ISO downloader (download.sh) builds a compose image and runs a throwaway
+# container from it. We target those containers, not just "whatever is newest".
+PROJECT="${PROJECT:-$(basename -- "$DIRNAME")}"
+SERVICE="${SERVICE:-bindows}"
+IMAGE="${IMAGE:-${PROJECT}-${SERVICE}}"   # e.g. download-windows-iso-2026-bindows
+
 # ------------------------------------------------------------------- helpers
 log() { printf '\033[1;34m==>\033[0m %s\n' "$*" >&2; }
 warn() { printf '\033[1;33mwarning:\033[0m %s\n' "$*" >&2; }
@@ -42,12 +48,12 @@ Options:
   -s, --source BRANCH      Branch holding the new changes (default: current)
   -t, --token-file FILE    File with GITHUB_TOKEN (default: ${TOKEN_FILE})
   -v, --version VERSION    Explicit version, e.g. v1.4.0 (default: auto minor bump)
-      --no-container       Skip deleting the latest Docker container
+      --no-container       Skip deleting the ISO-downloader container
   -h, --help               Show this help
 
 Environment overrides:
   GITHUB_TOKEN, REPO, BRANCH, SOURCE_BRANCH, ASSET_NAME, TOKEN_FILE,
-  VERSION, COMMIT_MESSAGE, RELEASE_NAME, RELEASE_BODY
+  VERSION, COMMIT_MESSAGE, RELEASE_NAME, RELEASE_BODY, PROJECT, SERVICE, IMAGE
 EOF
 }
 
@@ -88,11 +94,30 @@ AUTH_URL="https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO}.git"
 export GITHUB_TOKEN
 
 # ---------------------------------------------------- 1. delete the container
+#
+# The containers left behind by download.sh carry the compose labels baked into
+# the image, so we find them by project + service. The `ancestor=<image>` filter
+# is unreliable here: once the image is rebuilt the old containers point at a
+# dangling image id and stop matching by name.
+target_container_ids() {
+    local ids
+    ids="$(docker ps --all --quiet \
+        --filter "label=com.docker.compose.project=${PROJECT}" \
+        --filter "label=com.docker.compose.service=${SERVICE}" 2>/dev/null || true)"
+    if [[ -z "$ids" ]]; then
+        ids="$(docker ps --all --quiet --filter "ancestor=${IMAGE}" 2>/dev/null || true)"
+    fi
+    printf '%s\n' "$ids"
+}
+
+# Delete only the most recently created container of the ISO-downloader image.
 delete_latest_container() {
-    local cid
-    cid="$(docker ps --all --quiet --latest 2>/dev/null || true)"
+    local ids cid
+    ids="$(target_container_ids)"
+    cid="${ids%%$'\n'*}"                 # docker ps lists newest first
+
     if [[ -z "$cid" ]]; then
-        log "No Docker containers found; nothing to delete."
+        log "No '${IMAGE}' containers found; nothing to delete."
         return 0
     fi
 
@@ -101,7 +126,7 @@ delete_latest_container() {
     name="${info%% *}"; name="${name#/}"
     image="${info#* }"
 
-    log "Deleting latest container: ${cid} (${name:-?}, image ${image:-?})"
+    log "Deleting latest '${IMAGE}' container: ${cid} (${name:-?}, image ${image:-?})"
     docker rm --force "$cid" >/dev/null
     log "Container ${cid} removed."
 }
