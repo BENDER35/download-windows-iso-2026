@@ -81,6 +81,10 @@ need git
 need curl
 need python3
 
+# Authenticated push/API URL built on the fly so the token is never stored in
+# .git/config and the (possibly stale) credentials baked into 'origin' are ignored.
+AUTH_URL="https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO}.git"
+
 export GITHUB_TOKEN
 
 # ---------------------------------------------------- 1. delete the container
@@ -129,7 +133,7 @@ sync_changes() {
     fi
 
     log "Pushing '${BRANCH}'"
-    git push origin "$BRANCH"
+    git push "$AUTH_URL" "$BRANCH"
 }
 
 # -------------------------------------------------------- 3. next version tag
@@ -165,7 +169,7 @@ publish_release() {
     else
         git tag --annotate "$version" --message "Release ${version}"
     fi
-    git push origin "refs/tags/${version}"
+    git push "$AUTH_URL" "refs/tags/${version}"
 
     log "Looking up release ${version}"
     code="$(curl -s -o "$tmpdir/rel.json" -w '%{http_code}' \
