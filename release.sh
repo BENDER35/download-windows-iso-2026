@@ -48,12 +48,14 @@ Options:
   -s, --source BRANCH      Branch holding the new changes (default: current)
   -t, --token-file FILE    File with GITHUB_TOKEN (default: ${TOKEN_FILE})
   -v, --version VERSION    Explicit version, e.g. v1.4.0 (default: auto minor bump)
+  -a, --all-containers     Delete every container of the ISO-downloader image
       --no-container       Skip deleting the ISO-downloader container
   -h, --help               Show this help
 
 Environment overrides:
   GITHUB_TOKEN, REPO, BRANCH, SOURCE_BRANCH, ASSET_NAME, TOKEN_FILE,
-  VERSION, COMMIT_MESSAGE, RELEASE_NAME, RELEASE_BODY, PROJECT, SERVICE, IMAGE
+  VERSION, COMMIT_MESSAGE, RELEASE_NAME, RELEASE_BODY, PROJECT, SERVICE, IMAGE,
+  ALL_CONTAINERS
 EOF
 }
 
@@ -63,14 +65,16 @@ json_get() { python3 -c 'import json,sys; d=json.load(sys.stdin); print(d'"$1"')
 
 # --------------------------------------------------------------- arg parsing
 DO_CONTAINER=1
+ALL_CONTAINERS="${ALL_CONTAINERS:-0}"
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        -b|--branch)      BRANCH="$2"; shift 2 ;;
-        -s|--source)      SOURCE_BRANCH="$2"; shift 2 ;;
-        -t|--token-file)  TOKEN_FILE="$2"; shift 2 ;;
-        -v|--version)     VERSION="$2"; shift 2 ;;
-        --no-container)   DO_CONTAINER=0; shift ;;
-        -h|--help)        usage; exit 0 ;;
+        -b|--branch)        BRANCH="$2"; shift 2 ;;
+        -s|--source)        SOURCE_BRANCH="$2"; shift 2 ;;
+        -t|--token-file)    TOKEN_FILE="$2"; shift 2 ;;
+        -v|--version)       VERSION="$2"; shift 2 ;;
+        -a|--all-containers) ALL_CONTAINERS=1; shift ;;
+        --no-container)     DO_CONTAINER=0; shift ;;
+        -h|--help)          usage; exit 0 ;;
         *) die "unknown option: $1 (try --help)" ;;
     esac
 done
@@ -110,25 +114,42 @@ target_container_ids() {
     printf '%s\n' "$ids"
 }
 
-# Delete only the most recently created container of the ISO-downloader image.
-delete_latest_container() {
-    local ids cid
-    ids="$(target_container_ids)"
-    cid="${ids%%$'\n'*}"                 # docker ps lists newest first
-
-    if [[ -z "$cid" ]]; then
-        log "No '${IMAGE}' containers found; nothing to delete."
-        return 0
-    fi
-
-    local info name image
+# Remove a single container, logging what it was.
+delete_one_container() {
+    local cid="$1" info name image
     info="$(docker inspect --format '{{.Name}} {{.Config.Image}}' "$cid" 2>/dev/null || true)"
     name="${info%% *}"; name="${name#/}"
     image="${info#* }"
 
-    log "Deleting latest '${IMAGE}' container: ${cid} (${name:-?}, image ${image:-?})"
+    log "Deleting '${IMAGE}' container: ${cid} (${name:-?}, image ${image:-?})"
     docker rm --force "$cid" >/dev/null
     log "Container ${cid} removed."
+}
+
+# Delete the most recently created container of the ISO-downloader image, or
+# every one of them when --all-containers is given.
+delete_containers() {
+    local ids cid
+    ids="$(target_container_ids)"
+
+    if [[ -z "$ids" ]]; then
+        log "No '${IMAGE}' containers found; nothing to delete."
+        return 0
+    fi
+
+    if [[ "$ALL_CONTAINERS" -eq 1 ]]; then
+        local count=0
+        while IFS= read -r cid; do
+            [[ -n "$cid" ]] || continue
+            delete_one_container "$cid"
+            count=$((count + 1))
+        done <<<"$ids"
+        log "Removed ${count} '${IMAGE}' container(s)."
+        return 0
+    fi
+
+    cid="${ids%%$'\n'*}"                 # docker ps lists newest first
+    delete_one_container "$cid"
 }
 
 # ------------------------------------------------------ 2. sync the changes
@@ -261,7 +282,7 @@ for a in json.load(sys.stdin).get("assets", []):
 
 # ----------------------------------------------------------------------- main
 if [[ "$DO_CONTAINER" -eq 1 ]]; then
-    delete_latest_container
+    delete_containers
 fi
 sync_changes
 VERSION_RESOLVED="$(next_version)"
