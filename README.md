@@ -103,6 +103,32 @@ wget --content-disposition "URL_OUTPUT"
 # The URL will be displayed after the script runs
 ```
 
+## Releases (maintainers)
+
+`release.sh` automates the housekeeping around a release: it removes the Docker
+container(s) left by `download.sh`, syncs the working changes and publishes a
+GitHub release with a zip asset (plus a `.sha256`).
+
+```bash
+./release.sh                   # remove the latest ISO container, sync and publish
+./release.sh --all-containers  # purge every container of the ISO image
+./release.sh --dry-run         # show what would happen without changing anything
+./release.sh -v v2.0.0         # publish an explicit version
+./release.sh -m "fix: ..."     # custom commit message
+```
+
+Authentication uses a token with `repo` scope, read from an untracked
+`./.secrets` file or the `GITHUB_TOKEN` environment variable:
+
+```bash
+echo 'GITHUB_TOKEN=ghp_xxx' > .secrets
+chmod 600 .secrets
+```
+
+Options: `-b/--branch`, `-s/--source`, `-t/--token-file`, `-v/--version`,
+`-m/--message`, `-a/--all-containers`, `--no-container`, `-n/--dry-run`, `-h`.
+Run `./release.sh --help` for the full list and environment overrides.
+
 ATTENTION, NOTICE (October 12, 2026): microsoft will cut off starting June 19,
 2027 the access to windows update for all the computers that have windows 10
 without ESU and below (the previous block was up to windows vista-server 2008

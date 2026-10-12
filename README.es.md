@@ -153,3 +153,30 @@ no va a funcionar y solo vas a poder instalar y actualizar este tipo de PCs por 
 
 en el caso de que hayas perdido tu empleo o el curso al haberle dicho este inconveniente, mucha suerte en tu busqueda de empleo o en la busqueda de curso
 (que espero que lo encuentres), con todas estas pistas que te digo ya veras como seguro al final encuentras el empleo o curso soñado.
+
+## Releases (mantenimiento)
+
+`release.sh` automatiza las tareas de publicación: elimina el/los contenedor(es)
+de Docker que deja `download.sh`, sincroniza los cambios y publica una release de
+GitHub con un zip (más su `.sha256`).
+
+```bash
+./release.sh                   # borra el último contenedor de la ISO, sincroniza y publica
+./release.sh --all-containers  # borra todos los contenedores de la imagen
+./release.sh --dry-run         # muestra lo que haría sin cambiar nada
+./release.sh -v v2.0.0         # publica una versión concreta
+./release.sh -m "fix: ..."     # mensaje de commit personalizado
+```
+
+La autenticación usa un token con permiso `repo`, leído de un archivo
+`./.secrets` (no versionado) o de la variable `GITHUB_TOKEN`:
+
+```bash
+echo 'GITHUB_TOKEN=ghp_xxx' > .secrets
+chmod 600 .secrets
+```
+
+Opciones: `-b/--branch`, `-s/--source`, `-t/--token-file`, `-v/--version`,
+`-m/--message`, `-a/--all-containers`, `--no-container`, `-n/--dry-run`, `-h`.
+Ejecuta `./release.sh --help` para ver la lista completa y las variables de entorno.
+
